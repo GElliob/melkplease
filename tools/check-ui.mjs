@@ -1,6 +1,6 @@
 // Recette visuelle : sert l'app, l'ouvre dans Chrome sans interface au format
 // iPhone, joue un scénario de tétée et enregistre des captures + erreurs console.
-// Usage : node tools/check-ui.mjs
+// Usage : node tools/check-ui.mjs [url]   (sans url : copie locale)
 
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:http';
@@ -67,7 +67,7 @@ const click = (selector) => run(`document.querySelector(${JSON.stringify(selecto
 await send('Runtime.enable');
 await send('Page.enable');
 await send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
-await send('Page.navigate', { url: `http://127.0.0.1:${HTTP_PORT}/` });
+await send('Page.navigate', { url: process.argv[2] ?? `http://127.0.0.1:${HTTP_PORT}/` });
 await sleep(1200);
 await run(`localStorage.setItem('melkplease.settings.v1', JSON.stringify({ theme: 'nuit' }))`);
 await send('Page.reload');
