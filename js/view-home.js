@@ -35,7 +35,7 @@ function headerHtml(state, now) {
   const last = feeds[0];
   if (!last) return '<p class="label">Aucune tétée enregistrée</p><p class="sub">Touche un sein pour lancer le chrono.</p>';
   return `
-    <p class="label">Dernière tétée</p>
+    <p class="label">Début de la dernière tétée</p>
     <p class="big" data-tick="ago">${fmtAgo(now - last.start)}</p>
     <p class="sub">${lastFeedSummary(last)}</p>
     <p class="next" data-tick="next"></p>`;

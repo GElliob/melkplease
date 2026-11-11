@@ -1,7 +1,7 @@
 // Mode hors ligne : l'app s'ouvre même sans réseau (la nuit, en avion, partout).
 // Pour publier une mise à jour, incrémente VERSION.
 
-const VERSION = 'melkplease-v1';
+const VERSION = 'melkplease-v2';
 const ASSETS = [
   './', 'index.html', 'styles.css', 'manifest.webmanifest',
   'js/app.js', 'js/chrono.js', 'js/feed-form.js', 'js/feeds.js', 'js/files.js', 'js/format.js',
