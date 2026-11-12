@@ -2,14 +2,16 @@
 
 import { isValidFeed, sortFeeds } from './feeds.js';
 import { STORAGE_PREFIX } from './config.js';
+import { isValidEvent, sortEvents } from './tracking-model.js';
 
 const KEYS = Object.freeze({
   feeds: `${STORAGE_PREFIX}.feeds.v1`,
   active: `${STORAGE_PREFIX}.active.v1`,
   settings: `${STORAGE_PREFIX}.settings.v1`,
+  events: `${STORAGE_PREFIX}.events.v1`,
 });
 
-export const DEFAULT_SETTINGS = Object.freeze({ intervalMin: 180, theme: 'auto', lastBackup: null });
+export const DEFAULT_SETTINGS = Object.freeze({ intervalMin: 180, theme: 'auto', lastBackup: null, birth: null });
 export const BACKUP_APP = 'melkplease';
 
 function read(key, fallback) {
@@ -44,6 +46,14 @@ export function saveFeeds(feeds) {
 
 export const saveActive = (active) => write(KEYS.active, active);
 
+export const loadEvents = () => sortEvents(read(KEYS.events, []).filter(isValidEvent));
+
+export function saveEvents(events) {
+  const sorted = sortEvents(events);
+  write(KEYS.events, sorted);
+  return sorted;
+}
+
 export function saveSettings(settings) {
   write(KEYS.settings, settings);
   return settings;
@@ -58,17 +68,33 @@ export async function requestPersistence() {
   }
 }
 
-export function buildBackup(feeds, settings) {
-  return { app: BACKUP_APP, version: 1, exportedAt: new Date().toISOString(), feeds, settings };
+export function buildBackup(feeds, settings, events = []) {
+  return { app: BACKUP_APP, version: 2, exportedAt: new Date().toISOString(), feeds, settings, events };
 }
 
-/** Fusionne une sauvegarde : les tétées déjà présentes (même id) sont gardées telles quelles. */
-export function mergeBackup(currentFeeds, backup) {
+const mergeById = (current, incoming) => {
+  const known = new Set(current.map((x) => x.id));
+  return incoming.filter((x) => !known.has(x.id));
+};
+
+/**
+ * Fusionne une sauvegarde : ce qui est déjà présent (même id) est gardé tel quel.
+ * Les sauvegardes version 1 (tétées seules) restent acceptées.
+ */
+export function mergeBackup(currentFeeds, backup, currentEvents = []) {
   if (!backup || backup.app !== BACKUP_APP || !Array.isArray(backup.feeds)) {
     throw new Error("Ce fichier n'est pas une sauvegarde de MelkPlease.");
   }
   const valid = backup.feeds.filter(isValidFeed);
-  const known = new Set(currentFeeds.map((f) => f.id));
-  const added = valid.filter((f) => !known.has(f.id));
-  return { feeds: sortFeeds([...currentFeeds, ...added]), added: added.length, ignored: backup.feeds.length - valid.length };
+  const added = mergeById(currentFeeds, valid);
+  const incomingEvents = Array.isArray(backup.events) ? backup.events : [];
+  const validEvents = incomingEvents.filter(isValidEvent);
+  const addedEvents = mergeById(currentEvents, validEvents);
+  return {
+    feeds: sortFeeds([...currentFeeds, ...added]),
+    events: sortEvents([...currentEvents, ...addedEvents]),
+    added: added.length,
+    eventsAdded: addedEvents.length,
+    ignored: backup.feeds.length - valid.length + incomingEvents.length - validEvents.length,
+  };
 }

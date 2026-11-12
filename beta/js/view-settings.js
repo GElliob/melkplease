@@ -1,11 +1,11 @@
 // Réglages : intervalle, thème, rappels, import depuis Notes, sauvegarde.
 
-import { MIN, dayKey, escapeHtml, fmtClock, fmtDuration, toDateInput } from './format.js';
+import { MIN, dayKey, escapeHtml, fmtClock, fmtDuration, fromLocalInput, toDateInput, toLocalInput } from './format.js';
 import { sideOrder } from './feeds.js';
 import { parseNotes, withoutDuplicates } from './import-notes.js';
 import { bindSegmented, showError, stepperHtml } from './ui.js';
 
-export const APP_VERSION = '1.2 bêta';
+export const APP_VERSION = '1.3 bêta';
 const THEMES = [['auto', 'Auto'], ['nuit', 'Nuit'], ['jour', 'Jour']];
 
 function themeSeg(current) {
@@ -18,6 +18,11 @@ function html(state, now) {
   const backup = settings.lastBackup ? `Dernière : ${new Date(settings.lastBackup).toLocaleDateString('fr-FR')}` : 'Jamais faite';
   return `
     <div class="settings">
+      <section class="block">
+        <h3>Céleste</h3>
+        <label class="field"><span>Naissance (pour la courbe de croissance)</span>
+          <input type="datetime-local" name="birth" value="${settings.birth ? toLocalInput(settings.birth) : ''}"></label>
+      </section>
       <section class="block">
         <h3>Prochaine tétée</h3>
         <p class="hint">Écart prévu entre deux débuts de tétée : ${fmtDuration(settings.intervalMin * MIN)}.</p>
@@ -43,10 +48,11 @@ function html(state, now) {
         <div class="import-preview"></div>
       </section>
       <section class="block">
-        <h3>Sauvegarde · ${feeds.length} tétée${feeds.length > 1 ? 's' : ''}</h3>
+        <h3>Sauvegarde · ${feeds.length} tétée${feeds.length > 1 ? 's' : ''} · ${state.events.length} entrée${state.events.length > 1 ? 's' : ''} de suivi</h3>
         <p class="hint">${backup}. Les données restent sur ce téléphone : fais une sauvegarde chaque semaine.</p>
         <button class="btn" data-action="backup">Sauvegarder</button>
-        <button class="btn ghost" data-action="csv">Exporter en tableau (CSV)</button>
+        <button class="btn ghost" data-action="csv">Exporter les tétées (CSV)</button>
+        <button class="btn ghost" data-action="csv-suivi">Exporter le suivi (CSV)</button>
         <label class="btn ghost file-btn">Restaurer une sauvegarde<input type="file" accept="application/json,.json" data-action="restore" hidden></label>
       </section>
       <p class="version">MelkPlease ${APP_VERSION}</p>
@@ -108,6 +114,17 @@ export function renderSettings(root, state, now, actions) {
 
   root.querySelector('[data-action="backup"]').addEventListener('click', actions.backup);
   root.querySelector('[data-action="csv"]').addEventListener('click', actions.csv);
+  root.querySelector('[data-action="csv-suivi"]').addEventListener('click', actions.csvSuivi);
+  root.querySelector('input[name="birth"]').addEventListener('change', (e) => {
+    try {
+      const value = e.currentTarget.value;
+      const birth = value ? fromLocalInput(value) : null;
+      if (birth && birth > Date.now()) throw new Error('La naissance ne peut pas être dans le futur.');
+      actions.updateSettings({ birth });
+    } catch (err) {
+      showError(err);
+    }
+  });
   root.querySelector('[data-action="reminder"]').addEventListener('click', actions.reminder);
   root.querySelector('[data-action="restore"]').addEventListener('change', (e) => {
     const file = e.currentTarget.files?.[0];

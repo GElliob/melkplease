@@ -119,6 +119,45 @@ await send('Page.reload');
 await sleep(900);
 await shot('8-accueil-jour');
 
+if (await run(`Boolean(document.querySelector('[data-tab="suivi"]'))`)) {
+  await run(`localStorage.setItem('${PREFIX}.settings.v1', JSON.stringify({ theme: 'nuit', birth: Date.now() - 12 * 86400000 }))`);
+  await send('Page.reload');
+  await sleep(900);
+  await click('[data-tab="suivi"]');
+  await sleep(300);
+  await click('[data-action="quick"][data-tool="couche"][data-quick="0"]');
+  await sleep(300);
+  await click('[data-action="quick"][data-tool="medic"][data-quick="0"]');
+  await sleep(300);
+  await shot('9-suivi');
+  await click('[data-action="add-event"][data-tool="couche"]');
+  await sleep(300);
+  await click('.chips-choice[data-name="kind"] [data-value="selles"]');
+  await sleep(200);
+  await shot('10-couche-detail');
+  await click('.tracking-form button[type="submit"]');
+  await sleep(300);
+  await click('[data-action="add-event"][data-tool="sante"]');
+  await sleep(300);
+  await run(`(() => { const i = document.querySelector('input[name="f-temp"]'); i.value = '38,4'; i.dispatchEvent(new Event('input', { bubbles: true })); })()`);
+  await sleep(200);
+  await shot('11-sante-fievre');
+  await click('[data-close-sheet]');
+  await sleep(400);
+  await click('[data-action="add-event"][data-tool="croissance"]');
+  await sleep(300);
+  await run(`document.querySelector('input[name="f-poids"]').value = '3350'`);
+  await click('.tracking-form button[type="submit"]');
+  await sleep(300);
+  await click('[data-action="open-tool"][data-tool="croissance"]');
+  await sleep(300);
+  await shot('12-croissance');
+  await click('[data-tab="stats"]');
+  await sleep(300);
+  await run(`document.getElementById('view').scrollTo(0, 2000)`);
+  await shot('13-stats-suivi');
+}
+
 console.log(errors.length ? `ERREURS :\n${errors.join('\n')}` : 'Aucune erreur console.');
 ws.close();
 chrome.kill();
