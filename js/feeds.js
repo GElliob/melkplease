@@ -6,6 +6,23 @@ import { MIN } from './format.js';
 export const SIDES = Object.freeze(['G', 'D']);
 export const MAX_SIDE_MIN = 180;
 
+/** Indice de tétée, donné à la fin : qualité de la déglutition et de la prise. */
+export const SCORES = Object.freeze([0, 1, 2, 3, 4, 5]);
+export const SCORE_ANCHORS = Object.freeze({
+  0: 'Elle dort, aucune déglutition',
+  3: 'Déglutition correcte',
+  5: 'Excellente déglutition, prise rapide',
+});
+
+export const isValidScore = (score) => SCORES.includes(score);
+const isOptionalScore = (score) => score === undefined || score === null || isValidScore(score);
+
+/** Copie de la tétée avec son indice (null = pas encore noté). */
+export function withScore(feed, score) {
+  if (score !== null && !isValidScore(score)) throw new Error('Indice invalide (0 à 5).');
+  return Object.freeze({ ...feed, score });
+}
+
 export const otherSide = (side) => (side === 'G' ? 'D' : 'G');
 
 export function newId() {
@@ -58,7 +75,7 @@ export function nextFeedAt(feeds, intervalMin) {
  * Construit une tétée saisie à la main.
  * @param {{ start:number, first:'G'|'D', minutes:{G:number,D:number}, note?:string, source?:string, durationUnknown?:boolean }} input
  */
-export function buildFeed({ id, start, first, minutes, note = '', source = 'manuel', durationUnknown = false }) {
+export function buildFeed({ id, start, first, minutes, note = '', source = 'manuel', durationUnknown = false, score = null }) {
   if (!Number.isFinite(start)) throw new Error('Heure de début invalide.');
   if (!SIDES.includes(first)) throw new Error('Sein de départ invalide.');
   const order = [first, otherSide(first)];
@@ -69,6 +86,7 @@ export function buildFeed({ id, start, first, minutes, note = '', source = 'manu
     }
   });
   if (!durationUnknown && minutes.G + minutes.D === 0) throw new Error('Indique au moins une durée.');
+  if (!isOptionalScore(score)) throw new Error('Indice invalide (0 à 5).');
 
   const segments = durationUnknown
     ? [{ side: first, start, end: start }]
@@ -86,6 +104,7 @@ export function buildFeed({ id, start, first, minutes, note = '', source = 'manu
     segments,
     note: String(note).trim().slice(0, 300),
     source,
+    score: score ?? null,
     ...(durationUnknown ? { durationUnknown: true } : {}),
   });
 }
@@ -97,6 +116,7 @@ export function isValidFeed(f) {
       Number.isFinite(f.start) &&
       Array.isArray(f.segments) &&
       f.segments.length > 0 &&
+      isOptionalScore(f.score) &&
       f.segments.every(
         (s) => SIDES.includes(s.side) && Number.isFinite(s.start) && Number.isFinite(s.end) && s.end >= s.start,
       ),

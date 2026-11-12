@@ -45,16 +45,20 @@ function sideButton(side, state, now, suggested) {
   const { active } = state;
   const running = active?.current?.side === side;
   const paused = active && !active.current && active.pausedSide === side;
-  const time = active ? fmtTimer(elapsed(active, now)[side]) : '';
-  const hint = running ? 'pause' : paused ? 'reprendre' : active ? 'passer ici' : side === suggested ? 'conseillé' : '';
+  const hint = running ? 'pause' : paused ? 'reprendre' : 'passer ici';
   const classes = ['side-btn', `side-${side}`, running && 'running', paused && 'paused', !active && side === suggested && 'suggested']
     .filter(Boolean).join(' ');
+  // Au repos, la lettre est seule dans le cercle pour être centrée à l'œil.
+  // Le sein conseillé est signalé par l'anneau plein et la phrase au-dessus.
+  const details = active
+    ? `<span class="side-time" data-tick="${side}">${fmtTimer(elapsed(active, now)[side])}</span>
+       <span class="side-hint">${hint}</span>`
+    : '';
   return `
     <button class="${classes}" data-action="tap-side" data-side="${side}" aria-label="${SIDE_LABEL[side]}">
       <span class="ring"></span>
-      <span class="letter">${side}</span>
-      <span class="side-time" data-tick="${side}">${time}</span>
-      <span class="side-hint">${hint}</span>
+      <span class="letter letter-${side}">${side}</span>
+      ${details}
     </button>`;
 }
 
@@ -64,7 +68,8 @@ function footerHtml(state) {
       <button class="btn-finish" data-action="finish">Terminer</button>
       <button class="link-btn danger" data-action="discard">Annuler cette tétée</button>`;
   }
-  return '<button class="link-btn" data-action="manual">Saisir une tétée passée</button>';
+  return `<div class="home-links"><button class="link-btn" data-action="manual">Saisir une tétée passée</button>
+    <button class="link-btn" data-action="open-journal">Journal des tétées</button></div>`;
 }
 
 export function renderHome(root, state, now) {

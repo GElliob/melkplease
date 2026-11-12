@@ -2,6 +2,8 @@
 
 import { MIN, dayKey, fmtClock } from './format.js';
 import { sideDurations, sideOrder, totalDuration } from './feeds.js';
+import { TOOL_BY_KEY } from './tracking-defs.js';
+import { describeEvent } from './tracking-model.js';
 
 /** Partage un fichier (feuille de partage iOS) ou le télécharge à défaut. Renvoie false si annulé. */
 export async function shareOrDownload(content, name, type) {
@@ -27,7 +29,7 @@ export async function shareOrDownload(content, name, type) {
 const csvCell = (value) => `"${String(value ?? '').replaceAll('"', '""')}"`;
 
 export function buildCsv(feeds) {
-  const header = ['date', 'heure', 'gauche_min', 'droit_min', 'total_min', 'ordre', 'note'];
+  const header = ['date', 'heure', 'gauche_min', 'droit_min', 'total_min', 'ordre', 'indice', 'note'];
   const rows = [...feeds].reverse().map((f) => {
     const d = sideDurations(f);
     const unknown = Boolean(f.durationUnknown);
@@ -38,9 +40,17 @@ export function buildCsv(feeds) {
       unknown ? '' : Math.round(d.D / MIN),
       unknown ? '' : Math.round(totalDuration(f) / MIN),
       sideOrder(f).join(' puis '),
+      Number.isInteger(f.score) ? f.score : '',
       f.note,
     ].map(csvCell).join(';');
   });
+  return `﻿${[header.join(';'), ...rows].join('\r\n')}`;
+}
+
+export function buildEventsCsv(events) {
+  const header = ['date', 'heure', 'outil', 'detail', 'note'];
+  const rows = [...events].reverse().map((e) =>
+    [dayKey(e.at), fmtClock(e.at), TOOL_BY_KEY[e.type].name, describeEvent(e), e.data.note].map(csvCell).join(';'));
   return `﻿${[header.join(';'), ...rows].join('\r\n')}`;
 }
 

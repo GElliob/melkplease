@@ -2,6 +2,13 @@
 
 import { fmtDuration, shortDay } from './format.js';
 import { computeStats } from './stats.js';
+import { TOOL_BY_KEY } from './tracking-defs.js';
+import { summarize } from './tracking-model.js';
+import { weekSummary } from './today.js';
+import { weekHtml } from './view-today.js';
+import { DAY } from './format.js';
+
+const SUIVI_24H = Object.freeze(['couche', 'sommeil', 'biberon', 'medic']);
 
 const card = (label, value) => `<div class="card"><span class="card-label">${label}</span><span class="card-value">${value}</span></div>`;
 const orDash = (ms) => (ms == null ? '–' : fmtDuration(ms));
@@ -17,12 +24,14 @@ function sideSplit(sides) {
     </div>`;
 }
 
+const BAR_MAX_PX = 110;
+
 function weekBars(days) {
   const max = Math.max(1, ...days.map((d) => d.count));
   const bars = days.map((d) => `
     <div class="bar-col">
       <span class="bar-count">${d.count || ''}</span>
-      <span class="bar ${d.count ? "" : "empty"}" style="height:${Math.round((d.count / max) * 100)}%"></span>
+      <span class="bar ${d.count ? '' : 'bar-empty'}" style="height:${Math.max(3, Math.round((d.count / max) * BAR_MAX_PX))}px"></span>
       <span class="bar-day">${shortDay(d.from)}</span>
       <span class="bar-total">${d.totalMs ? fmtDuration(d.totalMs).replace(' min', '′') : ''}</span>
     </div>`).join('');
@@ -40,10 +49,17 @@ export function renderStats(root, state, now) {
         ${card('Intervalle moyen', orDash(s.avgInterval))}
         ${card('Plus long intervalle', orDash(s.maxInterval))}
         ${card('Durée moyenne', orDash(s.avgDuration))}
+        ${card(`Indice moyen${s.scoredCount ? ` (${s.scoredCount} notée${s.scoredCount > 1 ? 's' : ''})` : ''}`,
+          s.avgScore == null ? '–' : `${s.avgScore.toFixed(1).replace('.', ',')} / 5`)}
       </div>
       ${sideSplit(s.sides)}
       <h3>7 derniers jours</h3>
       ${weekBars(s.days)}
       <p class="hint">Intervalles comptés d’un début de tétée au suivant.</p>
+      <h3>Semaine (7 derniers jours)</h3>
+      <section class="dash-card">${weekHtml(weekSummary(state.feeds, state.events ?? [], now - 7 * DAY, now))}</section>
+      <h3>Suivi</h3>
+      <ul class="suivi-stats">${SUIVI_24H.map((k) =>
+        `<li><span aria-hidden="true">${TOOL_BY_KEY[k].icon}</span>${summarize(k, state.events ?? [], now)}</li>`).join('')}</ul>
     </div>`;
 }

@@ -24,6 +24,7 @@ export function computeStats(feeds, now) {
   const asc = [...recent].reverse();
   const timed = recent.filter((f) => !f.durationUnknown);
   const intervals = intervalsBetweenStarts(asc);
+  const scores = recent.map((f) => f.score).filter(Number.isInteger);
   const sides = timed.reduce((acc, f) => {
     const d = sideDurations(f);
     return { G: acc.G + d.G, D: acc.D + d.D };
@@ -35,6 +36,8 @@ export function computeStats(feeds, now) {
     avgDuration: average(timed.map(totalDuration)),
     avgInterval: average(intervals),
     maxInterval: intervals.length ? Math.max(...intervals) : null,
+    avgScore: average(scores),
+    scoredCount: scores.length,
     sides,
     days: last7Days(feeds, now),
   });

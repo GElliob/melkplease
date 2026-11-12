@@ -2,6 +2,7 @@
 
 import { MIN, dayKey, dayLabel, escapeHtml, fmtClock, fmtDuration } from './format.js';
 import { sideDurations, sideOrder, totalDuration } from './feeds.js';
+import { scoreBadgeHtml } from './score.js';
 
 const PAGE_DAYS = 7;
 
@@ -25,7 +26,7 @@ function rowHtml(feed, previous) {
   return `
     <button class="feed-row" data-action="edit" data-id="${escapeHtml(feed.id)}">
       <span class="time">${fmtClock(feed.start)}</span>
-      <span class="parts">${parts}${note}</span>
+      <span class="parts">${parts}${scoreBadgeHtml(feed.score)}${note}</span>
       <span class="total">${total}${gap}</span>
     </button>`;
 }
@@ -43,7 +44,7 @@ function dayHtml(group, now, olderFeed) {
 
 export function renderJournal(root, state, now, visibleDays = PAGE_DAYS) {
   if (!state.feeds.length) {
-    root.innerHTML = '<section class="empty"><p>Le journal est vide.</p></section>';
+    root.innerHTML = '<div class="journal"><button class="back-btn" data-action="goto-tab" data-tab="home">‹ Tétée</button><section class="empty"><p>Le journal est vide.</p></section></div>';
     return;
   }
   const groups = groupByDay(state.feeds);
@@ -52,5 +53,5 @@ export function renderJournal(root, state, now, visibleDays = PAGE_DAYS) {
   const more = groups.length > visibleDays
     ? `<button class="link-btn" data-action="more-days" data-days="${visibleDays + PAGE_DAYS}">Voir les jours précédents</button>`
     : '';
-  root.innerHTML = `<div class="journal">${html}${more}</div>`;
+  root.innerHTML = `<div class="journal"><button class="back-btn" data-action="goto-tab" data-tab="home">‹ Tétée</button><h2 class="screen-title">Journal des tétées</h2>${html}${more}</div>`;
 }

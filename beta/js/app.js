@@ -163,7 +163,10 @@ async function restore(file) {
   const { feeds, events, added, eventsAdded, ignored } = mergeBackup(state.feeds, backupData, state.events);
   commitFeeds(feeds);
   commitEvents(events);
-  showToast(`${added} tétée(s) et ${eventsAdded} entrée(s) de suivi ajoutée(s)${ignored ? `, ${ignored} illisible(s)` : ''}.`);
+  const birth = backupData.settings?.birth;
+  const takeBirth = !state.settings.birth && Number.isFinite(birth) && birth <= Date.now();
+  if (takeBirth) updateSettings({ birth });
+  showToast(`${added} tétée(s) et ${eventsAdded} entrée(s) de suivi ajoutée(s)${takeBirth ? ', date de naissance reprise' : ''}${ignored ? `, ${ignored} illisible(s)` : ''}.`);
 }
 
 function importFeeds(feeds) {
