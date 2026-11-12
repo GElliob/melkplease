@@ -1,11 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { tapSide, elapsed, finishActive } from '../js/chrono.js';
-import { buildFeed, suggestNextSide, sideDurations, sideOrder } from '../js/feeds.js';
-import { parseNotes, withoutDuplicates } from '../js/import-notes.js';
-import { computeStats } from '../js/stats.js';
-import { mergeBackup, buildBackup } from '../js/store.js';
-import { buildCsv } from '../js/files.js';
+const DIR = process.env.APP_DIR ?? '..';
+const { tapSide, elapsed, finishActive } = await import(`${DIR}/js/chrono.js`);
+const { buildFeed, suggestNextSide, sideDurations, sideOrder } = await import(`${DIR}/js/feeds.js`);
+const { parseNotes, withoutDuplicates } = await import(`${DIR}/js/import-notes.js`);
+const { computeStats } = await import(`${DIR}/js/stats.js`);
+const { mergeBackup, buildBackup } = await import(`${DIR}/js/store.js`);
+const { buildCsv } = await import(`${DIR}/js/files.js`);
 
 const M = 60000;
 const T0 = new Date(2026, 10, 11, 14, 0).getTime();
@@ -98,5 +99,5 @@ test('sauvegarde : fusion sans doublon, rejet des fichiers étrangers', () => {
 test('csv', () => {
   const f = buildFeed({ start: T0, first: 'G', minutes: { G: 10, D: 5 }, note: 'tête "molle"' });
   const csv = buildCsv([f]);
-  assert.match(csv, /"2026-11-11";"14:00";"10";"5";"15";"G puis D";"tête ""molle"""/);
+  assert.match(csv, /"2026-11-11";"14:00";"10";"5";"15";"G puis D";(?:"";)?"tête ""molle"""/);
 });

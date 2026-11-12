@@ -1,6 +1,7 @@
 // Recette visuelle : sert l'app, l'ouvre dans Chrome sans interface au format
 // iPhone, joue un scénario de tétée et enregistre des captures + erreurs console.
-// Usage : node tools/check-ui.mjs [url]   (sans url : copie locale)
+// Usage : node tools/check-ui.mjs [url] [captures]
+//   sans url : copie locale ; http://127.0.0.1:4791/beta/ pour la bêta locale
 
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:http';
@@ -10,7 +11,7 @@ import { dirname, extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const SHOTS = join(ROOT, 'tools', 'captures');
+const SHOTS = join(ROOT, 'tools', process.argv[3] ?? 'captures');
 const CHROME = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
 const HTTP_PORT = 4791;
 const CDP_PORT = 9341;
@@ -18,13 +19,17 @@ const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/cs
 
 const server = createServer((req, res) => {
   const path = normalize(decodeURIComponent(new URL(req.url, 'http://x').pathname)).replace(/^([/\\])+/, '');
-  const file = join(ROOT, path || 'index.html');
+  const asked = join(ROOT, path);
+  const file = !path || /[/\\]$/.test(req.url.split('?')[0]) ? join(asked, 'index.html') : asked;
   if (!file.startsWith(ROOT)) { res.writeHead(403).end(); return; }
+  let body;
   try {
-    res.writeHead(200, { 'Content-Type': TYPES[extname(file)] ?? 'application/octet-stream' }).end(readFileSync(file));
+    body = readFileSync(file);
   } catch {
     res.writeHead(404).end();
+    return;
   }
+  res.writeHead(200, { 'Content-Type': TYPES[extname(file)] ?? 'application/octet-stream' }).end(body);
 }).listen(HTTP_PORT);
 
 const chrome = spawn(CHROME, ['--headless=new', '--disable-gpu', '--no-first-run',
@@ -67,9 +72,11 @@ const click = (selector) => run(`document.querySelector(${JSON.stringify(selecto
 await send('Runtime.enable');
 await send('Page.enable');
 await send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
-await send('Page.navigate', { url: process.argv[2] ?? `http://127.0.0.1:${HTTP_PORT}/` });
+const URL_APP = process.argv[2] ?? `http://127.0.0.1:${HTTP_PORT}/`;
+const PREFIX = URL_APP.includes('/beta') ? 'melkplease-beta' : 'melkplease';
+await send('Page.navigate', { url: URL_APP });
 await sleep(1200);
-await run(`localStorage.setItem('melkplease.settings.v1', JSON.stringify({ theme: 'nuit' }))`);
+await run(`localStorage.setItem('${PREFIX}.settings.v1', JSON.stringify({ theme: 'nuit' }))`);
 await send('Page.reload');
 await sleep(1000);
 await shot('1-accueil-vide');
@@ -81,6 +88,11 @@ await sleep(1200);
 await shot('2-tetee-en-cours');
 await click('[data-action="finish"]');
 await sleep(500);
+if (await run(`Boolean(document.querySelector('[data-score]'))`)) {
+  await shot('3a-indice');
+  await click('[data-score="4"]');
+  await sleep(400);
+}
 await shot('3-terminee-toast');
 
 await click('[data-action="manual"]');
@@ -102,7 +114,7 @@ await run(`document.querySelector('textarea[name="import-text"]').value = '10/11
 await click('[data-action="import-preview"]');
 await sleep(300);
 await shot('7-import');
-await run(`localStorage.setItem('melkplease.settings.v1', JSON.stringify({ theme: 'jour' }))`);
+await run(`localStorage.setItem('${PREFIX}.settings.v1', JSON.stringify({ theme: 'jour' }))`);
 await send('Page.reload');
 await sleep(900);
 await shot('8-accueil-jour');
