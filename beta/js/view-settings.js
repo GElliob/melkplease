@@ -5,7 +5,7 @@ import { sideOrder } from './feeds.js';
 import { parseNotes, withoutDuplicates } from './import-notes.js';
 import { bindSegmented, showError, stepperHtml } from './ui.js';
 
-export const APP_VERSION = '1.3 bêta';
+export const APP_VERSION = '1.4 bêta';
 const THEMES = [['auto', 'Auto'], ['nuit', 'Nuit'], ['jour', 'Jour']];
 
 function themeSeg(current) {

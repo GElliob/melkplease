@@ -5,12 +5,14 @@ import { nextFeedAt, suggestNextSide, totalDuration, withScore } from './feeds.j
 import { openScoreSheet } from './score.js';
 import { finishActive, tapSide } from './chrono.js';
 import {
-  buildBackup, loadActive, loadEvents, loadFeeds, loadSettings, mergeBackup,
-  requestPersistence, saveActive, saveEvents, saveFeeds, saveSettings,
+  buildBackup, loadActive, loadEvents, loadFeeds, loadSettings, loadSleepActive, mergeBackup,
+  requestPersistence, saveActive, saveEvents, saveFeeds, saveSettings, saveSleepActive,
 } from './store.js';
 import { buildCsv, buildEventsCsv, openReminder, shareOrDownload } from './files.js';
 import { suiviHandlers } from './suivi-actions.js';
 import { renderSuivi } from './view-suivi.js';
+import { renderToday, tickToday } from './view-today.js';
+import { buildEvent } from './tracking-model.js';
 import { openFeedForm } from './feed-form.js';
 import { showError, showToast } from './ui.js';
 import { renderHome, tickHome } from './view-home.js';
@@ -22,8 +24,8 @@ const BABY_NAME = 'Céleste';
 const NIGHT = Object.freeze({ from: 19, to: 8 });
 
 let state = Object.freeze({
-  tab: 'home', journalDays: 7, tool: null, growthMetric: 'poids',
-  feeds: loadFeeds(), active: loadActive(), settings: loadSettings(), events: loadEvents(),
+  tab: 'today', journalDays: 7, tool: null, growthMetric: 'poids',
+  feeds: loadFeeds(), active: loadActive(), settings: loadSettings(), events: loadEvents(), sleepActive: loadSleepActive(),
 });
 let wakeLock = null;
 
@@ -90,6 +92,33 @@ function confirmFinished(feed, detail) {
 
 function onDiscard() {
   if (window.confirm('Annuler cette tétée sans l’enregistrer ?')) commitActive(null);
+}
+
+/* ---------- Sommeil chronométré ---------- */
+
+const MIN_SLEEP_MS = 60 * 1000;
+
+function onSleepStart() {
+  const sleepActive = { start: Date.now() };
+  saveSleepActive(sleepActive);
+  setState({ sleepActive });
+}
+
+function onSleepStop() {
+  const { sleepActive } = state;
+  if (!sleepActive) return;
+  const now = Date.now();
+  saveSleepActive(null);
+  setState({ sleepActive: null });
+  if (now - sleepActive.start < MIN_SLEEP_MS) {
+    showToast('Moins d’une minute : rien d’enregistré.');
+    return;
+  }
+  const event = buildEvent('sommeil', sleepActive.start, { end: now });
+  commitEvents([event, ...state.events]);
+  showToast(`Sommeil enregistré · ${fmtDuration(now - sleepActive.start)}`, [
+    { label: 'Annuler', run: () => commitEvents(state.events.filter((e) => e.id !== event.id)) },
+  ], 8000);
 }
 
 /* ---------- Saisie et modification ---------- */
@@ -177,10 +206,13 @@ function applyTheme() {
 function render() {
   const now = Date.now();
   applyTheme();
-  document.querySelectorAll('.tabs [data-tab]').forEach((b) => b.classList.toggle('on', b.dataset.tab === state.tab));
+  const tabOn = state.tab === 'journal' ? 'home' : state.tab;
+  document.querySelectorAll('.tabs [data-tab]').forEach((b) => b.classList.toggle('on', b.dataset.tab === tabOn));
   document.body.classList.toggle('feeding', Boolean(state.active));
+  document.body.dataset.tab = state.tab;
   const root = view();
-  if (state.tab === 'home') renderHome(root, state, now);
+  if (state.tab === 'today') renderToday(root, state, now);
+  else if (state.tab === 'home') renderHome(root, state, now);
   else if (state.tab === 'journal') renderJournal(root, state, now, state.journalDays);
   else if (state.tab === 'suivi') renderSuivi(root, state, now);
   else if (state.tab === 'stats') renderStats(root, state, now);
@@ -195,6 +227,11 @@ const handlers = Object.freeze({
   edit: (el) => openForm(state.feeds.find((f) => f.id === el.dataset.id)),
   'more-days': (el) => setState({ journalDays: Number(el.dataset.days) }),
   'goto-settings': () => setState({ tab: 'settings' }),
+  'goto-tab': (el) => setState({ tab: el.dataset.tab, tool: null }),
+  'goto-tool': (el) => setState({ tab: 'suivi', tool: el.dataset.tool }),
+  'open-journal': () => setState({ tab: 'journal' }),
+  'sleep-start': onSleepStart,
+  'sleep-stop': onSleepStop,
   ...suiviHandlers({ getState: () => state, setState, commitEvents, safe }),
 });
 
@@ -208,7 +245,7 @@ function bindEvents() {
     btn.addEventListener('click', () => setState({ tab: btn.dataset.tab, tool: null })));
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') {
-      setState({ feeds: loadFeeds(), active: loadActive(), events: loadEvents() });
+      setState({ feeds: loadFeeds(), active: loadActive(), events: loadEvents(), sleepActive: loadSleepActive() });
       syncWakeLock();
     }
   });
@@ -237,6 +274,7 @@ function start() {
   requestPersistence();
   setInterval(() => {
     if (state.tab === 'home') tickHome(view(), state, Date.now());
+    else if (state.tab === 'today') tickToday(view(), state, Date.now());
   }, 1000);
   setInterval(applyTheme, 60 * 1000);
   if ('serviceWorker' in navigator) {

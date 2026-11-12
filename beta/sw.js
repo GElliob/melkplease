@@ -2,12 +2,12 @@
 // Pour publier une mise à jour, incrémente VERSION.
 
 const CACHE_PREFIX = 'melkplease-beta-';
-const VERSION = `${CACHE_PREFIX}v2`;
+const VERSION = `${CACHE_PREFIX}v3`;
 const ASSETS = [
   './', 'index.html', 'styles.css', 'manifest.webmanifest',
   'js/app.js', 'js/config.js', 'js/chrono.js', 'js/feed-form.js', 'js/feeds.js', 'js/files.js', 'js/format.js',
   'js/import-notes.js', 'js/score.js', 'js/stats.js',
-  'js/growth.js', 'js/growth-data.js', 'js/suivi-actions.js', 'js/tracking-defs.js', 'js/tracking-form.js', 'js/tracking-model.js', 'js/view-suivi.js', 'js/store.js', 'js/ui.js',
+  'js/growth.js', 'js/growth-data.js', 'js/suivi-actions.js', 'js/tracking-defs.js', 'js/tracking-form.js', 'js/tracking-model.js', 'js/view-suivi.js', 'js/today.js', 'js/view-today.js', 'js/store.js', 'js/ui.js',
   'js/view-home.js', 'js/view-journal.js', 'js/view-settings.js', 'js/view-stats.js',
   'icons/icon-180.png', 'icons/icon-192.png', 'icons/icon-512.png',
 ];

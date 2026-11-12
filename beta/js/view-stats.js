@@ -4,6 +4,9 @@ import { fmtDuration, shortDay } from './format.js';
 import { computeStats } from './stats.js';
 import { TOOL_BY_KEY } from './tracking-defs.js';
 import { summarize } from './tracking-model.js';
+import { weekSummary } from './today.js';
+import { weekHtml } from './view-today.js';
+import { DAY } from './format.js';
 
 const SUIVI_24H = Object.freeze(['couche', 'sommeil', 'biberon', 'medic']);
 
@@ -53,6 +56,8 @@ export function renderStats(root, state, now) {
       <h3>7 derniers jours</h3>
       ${weekBars(s.days)}
       <p class="hint">Intervalles comptés d’un début de tétée au suivant.</p>
+      <h3>Semaine (7 derniers jours)</h3>
+      <section class="dash-card">${weekHtml(weekSummary(state.feeds, state.events ?? [], now - 7 * DAY, now))}</section>
       <h3>Suivi</h3>
       <ul class="suivi-stats">${SUIVI_24H.map((k) =>
         `<li><span aria-hidden="true">${TOOL_BY_KEY[k].icon}</span>${summarize(k, state.events ?? [], now)}</li>`).join('')}</ul>

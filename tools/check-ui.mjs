@@ -79,6 +79,11 @@ await sleep(1200);
 await run(`localStorage.setItem('${PREFIX}.settings.v1', JSON.stringify({ theme: 'nuit' }))`);
 await send('Page.reload');
 await sleep(1000);
+if (await run(`Boolean(document.querySelector('[data-tab="today"]'))`)) {
+  await shot('0-aujourdhui-vide');
+  await click('[data-tab="home"]');
+  await sleep(300);
+}
 await shot('1-accueil-vide');
 
 await click('[data-action="tap-side"][data-side="G"]');
@@ -117,6 +122,8 @@ await shot('7-import');
 await run(`localStorage.setItem('${PREFIX}.settings.v1', JSON.stringify({ theme: 'jour' }))`);
 await send('Page.reload');
 await sleep(900);
+if (await run(`Boolean(document.querySelector('[data-tab="today"]'))`)) await click('[data-tab="home"]');
+await sleep(300);
 await shot('8-accueil-jour');
 
 if (await run(`Boolean(document.querySelector('[data-tab="suivi"]'))`)) {
@@ -156,6 +163,37 @@ if (await run(`Boolean(document.querySelector('[data-tab="suivi"]'))`)) {
   await sleep(300);
   await run(`document.getElementById('view').scrollTo(0, 2000)`);
   await shot('13-stats-suivi');
+  if (await run(`Boolean(document.querySelector('[data-tab="today"]'))`)) {
+    await click('[data-tab="today"]');
+    await sleep(300);
+    await click('[data-action="sleep-start"]');
+    await sleep(1200);
+    await shot('14-aujourdhui');
+    await run(`document.getElementById('view').scrollTo(0, 2000)`);
+    await shot('15-aujourdhui-bas');
+    await click('[data-tab="home"]');
+    await sleep(300);
+    await click('[data-action="open-journal"]');
+    await sleep(300);
+    await shot('16-journal');
+    // Journée réaliste : une tétée toutes les 3 h environ, des siestes entre.
+    await run(`(() => {
+      const M = 60000, H = 60 * M, now = Date.now(), feeds = [], events = [];
+      for (let i = 0; i < 8; i += 1) {
+        const start = now - (i * 3 + 1) * H, g = 12 * M, d = 8 * M;
+        const first = i % 2 ? 'G' : 'D', second = first === 'G' ? 'D' : 'G';
+        feeds.push({ id: 'f' + i, start, end: start + g + d, source: 'test', note: '', score: 2 + (i % 4),
+          segments: [{ side: first, start, end: start + g }, { side: second, start: start + g, end: start + g + d }] });
+        events.push({ id: 's' + i, type: 'sommeil', at: start + 40 * M, data: { end: start + 150 * M } });
+      }
+      localStorage.setItem('${PREFIX}.feeds.v1', JSON.stringify(feeds));
+      localStorage.setItem('${PREFIX}.events.v1', JSON.stringify(events));
+      localStorage.removeItem('${PREFIX}.sleep.v1');
+    })()`);
+    await send('Page.reload');
+    await sleep(900);
+    await shot('17-aujourdhui-rempli');
+  }
 }
 
 console.log(errors.length ? `ERREURS :\n${errors.join('\n')}` : 'Aucune erreur console.');

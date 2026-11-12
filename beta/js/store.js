@@ -9,6 +9,7 @@ const KEYS = Object.freeze({
   active: `${STORAGE_PREFIX}.active.v1`,
   settings: `${STORAGE_PREFIX}.settings.v1`,
   events: `${STORAGE_PREFIX}.events.v1`,
+  sleep: `${STORAGE_PREFIX}.sleep.v1`,
 });
 
 export const DEFAULT_SETTINGS = Object.freeze({ intervalMin: 180, theme: 'auto', lastBackup: null, birth: null });
@@ -45,6 +46,13 @@ export function saveFeeds(feeds) {
 }
 
 export const saveActive = (active) => write(KEYS.active, active);
+
+/** Sommeil chronométré en cours : { start } ou null. */
+export const loadSleepActive = () => {
+  const s = read(KEYS.sleep, null);
+  return s && Number.isFinite(s.start) ? s : null;
+};
+export const saveSleepActive = (sleep) => write(KEYS.sleep, sleep);
 
 export const loadEvents = () => sortEvents(read(KEYS.events, []).filter(isValidEvent));
 

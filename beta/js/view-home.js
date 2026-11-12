@@ -68,7 +68,8 @@ function footerHtml(state) {
       <button class="btn-finish" data-action="finish">Terminer</button>
       <button class="link-btn danger" data-action="discard">Annuler cette tétée</button>`;
   }
-  return '<button class="link-btn" data-action="manual">Saisir une tétée passée</button>';
+  return `<div class="home-links"><button class="link-btn" data-action="manual">Saisir une tétée passée</button>
+    <button class="link-btn" data-action="open-journal">Journal des tétées</button></div>`;
 }
 
 export function renderHome(root, state, now) {
