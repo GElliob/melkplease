@@ -4,8 +4,11 @@ import { MIN, dayKey, escapeHtml, fmtClock, fmtDuration, fromLocalInput, toDateI
 import { sideOrder } from './feeds.js';
 import { parseNotes, withoutDuplicates } from './import-notes.js';
 import { bindSegmented, showError, stepperHtml } from './ui.js';
+import { bindServerSection, serverSectionHtml } from './settings-server.js';
 
-export const APP_VERSION = '1.4 bêta';
+export { setSyncStatus } from './settings-server.js';
+
+export const APP_VERSION = '1.5 bêta';
 const THEMES = [['auto', 'Auto'], ['nuit', 'Nuit'], ['jour', 'Jour']];
 
 function themeSeg(current) {
@@ -34,8 +37,9 @@ function html(state, now) {
         ${themeSeg(settings.theme)}
         <p class="hint">Auto : nuit de 19 h à 8 h.</p>
       </section>
+      ${serverSectionHtml(settings)}
       <section class="block">
-        <h3>Rappel</h3>
+        <h3>Rappel dans le calendrier</h3>
         <button class="btn" data-action="reminder" ${feeds.length ? '' : 'disabled'}>Ajouter la prochaine tétée au calendrier</button>
         <p class="hint">Crée une alerte dans le calendrier de l’iPhone à l’heure prévue.</p>
       </section>
@@ -82,6 +86,7 @@ export function renderSettings(root, state, now, actions) {
 
   bindSegmented(root);
   root.querySelector('.seg[data-name="theme"]').addEventListener('change', (e) => actions.updateSettings({ theme: e.currentTarget.dataset.value }));
+  bindServerSection(root, actions);
 
   const interval = root.querySelector('input[name="interval"]');
   root.querySelectorAll('.interval [data-step]').forEach((btn) => {

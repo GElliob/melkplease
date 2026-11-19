@@ -12,7 +12,11 @@ const KEYS = Object.freeze({
   sleep: `${STORAGE_PREFIX}.sleep.v1`,
 });
 
-export const DEFAULT_SETTINGS = Object.freeze({ intervalMin: 180, theme: 'auto', lastBackup: null, birth: null });
+export const DEFAULT_SETTINGS = Object.freeze({
+  intervalMin: 180, theme: 'auto', lastBackup: null, birth: null,
+  // Serveur (Siri et notifications) : code saisi sur le téléphone, jamais dans le code de l'app.
+  serverCode: null, reminderOffsetMin: 0, lateAlertMin: 60, vitdHour: 10, quietNights: false,
+});
 export const BACKUP_APP = 'melkplease';
 
 function read(key, fallback) {

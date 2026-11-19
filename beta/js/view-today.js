@@ -6,7 +6,7 @@ import { nextFeedAt, suggestNextSide } from './feeds.js';
 import { elapsed } from './chrono.js';
 import { describeEvent } from './tracking-model.js';
 import {
-  ageLabel, diapersLast24h, feedsLast24h, nextAppointment, previousWeekWindow,
+  ageLabel, diapersLast24h, vitaminKStatus, feedsLast24h, nextAppointment, previousWeekWindow,
   sleepMsBetween, sleepStatus, timelineSegments, vitaminDToday, weekSummary, weightTrend,
 } from './today.js';
 
@@ -88,6 +88,8 @@ function smallCards(state, now) {
   const vitd = vitaminDToday(state.events, now);
   const weight = weightTrend(state.events);
   const rdv = nextAppointment(state.events, now);
+  const vitk = vitaminKStatus(state.events, now);
+  const vitkDate = vitk && new Date(vitk.next).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' });
   const delta = weight?.deltaG != null
     ? ` · ${weight.deltaG >= 0 ? '+' : ''}${weight.deltaG.toLocaleString('fr-FR')} g en ${fmtSpan(weight.sinceMs)}`
     : '';
@@ -101,6 +103,9 @@ function smallCards(state, now) {
         <span class="dash-stats">${weight ? `<b>${weight.last.data.poids.toLocaleString('fr-FR')} g</b>${delta}` : 'Aucune pesée'}</span>
       </button>
     </div>
+    ${vitk ? (vitk.due
+      ? `<button class="dash-card todo" data-action="quick" data-tool="medic" data-quick="1"><span class="dash-title">Vitamine K</span><span class="dash-stats">Dose du mois à donner · toucher quand c’est fait</span></button>`
+      : `<section class="dash-card done"><span class="dash-title">Vitamine K</span><span class="dash-stats">Prochaine dose le ${vitkDate}</span></section>`) : ''}
     ${rdv ? `<button class="dash-card" data-action="goto-tool" data-tool="rdv"><span class="dash-title">Prochain rendez-vous</span>
       <span class="dash-stats">${escapeHtml(describeEvent(rdv))} · ${new Date(rdv.at).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })} à ${fmtClock(rdv.at)}</span></button>` : ''}`;
 }

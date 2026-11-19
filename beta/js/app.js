@@ -18,7 +18,9 @@ import { showError, showToast } from './ui.js';
 import { renderHome, tickHome } from './view-home.js';
 import { renderJournal } from './view-journal.js';
 import { renderStats } from './view-stats.js';
-import { renderSettings } from './view-settings.js';
+import { renderSettings, setSyncStatus } from './view-settings.js';
+import { createSync } from './sync.js';
+import { enableNotifications, testPush } from './server.js';
 
 const BABY_NAME = 'Céleste';
 const NIGHT = Object.freeze({ from: 19, to: 8 });
@@ -28,6 +30,9 @@ let state = Object.freeze({
   feeds: loadFeeds(), active: loadActive(), settings: loadSettings(), events: loadEvents(), sleepActive: loadSleepActive(),
 });
 let wakeLock = null;
+let sync = null;
+/** Signale au serveur un changement fait sur le téléphone. */
+const changed = () => sync?.markChanged();
 
 const view = () => document.getElementById('view');
 
@@ -40,20 +45,34 @@ function setState(patch) {
 
 function commitFeeds(feeds) {
   setState({ feeds: saveFeeds(feeds) });
+  changed();
 }
 
 function commitEvents(events) {
   setState({ events: saveEvents(events) });
+  changed();
 }
 
 function commitActive(active) {
   saveActive(active);
   setState({ active });
   syncWakeLock();
+  changed();
 }
 
 function updateSettings(patch) {
   setState({ settings: saveSettings({ ...state.settings, ...patch }) });
+  changed();
+}
+
+/** Applique ce qui vient du serveur (ordres Siri, état en cours) sans le renvoyer. */
+function adoptRemote(patch) {
+  if (patch.feeds) saveFeeds(patch.feeds);
+  if (patch.events) saveEvents(patch.events);
+  if ('active' in patch) saveActive(patch.active);
+  if ('sleepActive' in patch) saveSleepActive(patch.sleepActive);
+  setState(patch);
+  syncWakeLock();
 }
 
 /* ---------- Tétée en cours ---------- */
@@ -102,6 +121,7 @@ function onSleepStart() {
   const sleepActive = { start: Date.now() };
   saveSleepActive(sleepActive);
   setState({ sleepActive });
+  changed();
 }
 
 function onSleepStop() {
@@ -110,6 +130,7 @@ function onSleepStop() {
   const now = Date.now();
   saveSleepActive(null);
   setState({ sleepActive: null });
+  changed();
   if (now - sleepActive.start < MIN_SLEEP_MS) {
     showToast('Moins d’une minute : rien d’enregistré.');
     return;
@@ -175,8 +196,39 @@ function importFeeds(feeds) {
   setState({ tab: 'journal' });
 }
 
+async function saveServerCode(code) {
+  const clean = String(code ?? '').trim();
+  if (clean && !/^[a-z0-9]{16,64}$/i.test(clean)) throw new Error('Code d’accès invalide : vérifie qu’il est complet.');
+  updateSettings({ serverCode: clean || null });
+  if (clean) {
+    await sync.syncNow();
+    showToast('Code enregistré.');
+  }
+}
+
+async function activateNotifications() {
+  await enableNotifications(state.settings.serverCode);
+  await sync.syncNow();
+  showToast('Notifications activées.');
+}
+
+async function sendTestNotification() {
+  const result = await testPush(state.settings.serverCode);
+  showToast(result.sent ? 'Notification de test envoyée.' : 'Aucun téléphone abonné : active d’abord les notifications.');
+}
+
+async function copyServerCode() {
+  await navigator.clipboard.writeText(state.settings.serverCode ?? '');
+  showToast('Code copié : colle-le dans le raccourci Siri.');
+}
+
 const settingsActions = Object.freeze({
   updateSettings,
+  saveServerCode: safe(saveServerCode),
+  activateNotifications: safe(activateNotifications),
+  sendTestNotification: safe(sendTestNotification),
+  copyServerCode: safe(copyServerCode),
+  syncNow: safe(() => sync.syncNow()),
   importFeeds: safe(importFeeds),
   backup: safe(backup),
   csv: safe(() => shareOrDownload(buildCsv(state.feeds), `melkplease-${dayKey(Date.now())}.csv`, 'text/csv')),
@@ -275,6 +327,13 @@ function start() {
   render();
   syncWakeLock();
   requestPersistence();
+  sync = createSync({
+    getState: () => state,
+    adopt: adoptRemote,
+    onStatus: setSyncStatus,
+    onReceived: (n) => showToast(`${n} saisie${n > 1 ? 's' : ''} reçue${n > 1 ? 's' : ''} par Siri.`),
+  });
+  sync.start();
   setInterval(() => {
     if (state.tab === 'home') tickHome(view(), state, Date.now());
     else if (state.tab === 'today') tickToday(view(), state, Date.now());

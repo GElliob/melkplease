@@ -2,3 +2,8 @@
 // s'y passe ne touche les données de l'app principale.
 export const STORAGE_PREFIX = 'melkplease-beta';
 export const CHANNEL_LABEL = 'bêta';
+
+// Serveur des commandes Siri et des notifications (adresse publique, pas un secret).
+export const SERVER_URL = 'https://melkplease-serveur.melkplease-serveur.workers.dev';
+// Espace du serveur : la bêta a le sien, séparé de celui de l'app principale.
+export const SERVER_CANAL = 'beta';

@@ -35,7 +35,7 @@ export const TOOLS = Object.freeze([
   },
   {
     key: 'medic', name: 'Vitamines et médicaments', icon: '💊', atLabel: 'Heure',
-    quick: [{ label: 'Vitamine D donnée', data: { produit: 'vitd' } }],
+    quick: [{ label: 'Vitamine D donnée', data: { produit: 'vitd' } }, { label: 'Vitamine K donnée', data: { produit: 'vitk' } }],
     fields: [
       { key: 'produit', type: 'choice', label: 'Produit', required: true,
         options: [['vitd', 'Vitamine D'], ['vitk', 'Vitamine K'], ['para', 'Paracétamol'], ['autre', 'Autre']] },
