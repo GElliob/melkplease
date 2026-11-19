@@ -52,6 +52,8 @@ test('réception : la modification la plus récente gagne', () => {
   const del = S.applyRemote({ ...state, feeds: [f1, f2] }, {}, [{ id: f2.id, kind: 'feed', updatedAt: 70, deleted: true }]);
   assert.deepEqual(del.feeds.map((f) => f.id), [f1.id]);
   assert.equal(S.applyRemote(state, {}, [{ id: f1.id, kind: 'feed', updatedAt: 80, data: f1 }]), null, 'identique : rien à redessiner');
+  const tie = S.applyRemote({ ...state, settings: { birth: 1 } }, { settings: { kind: 'settings', updatedAt: 1 } }, [{ id: 'settings', kind: 'settings', updatedAt: 1, data: { birth: 2 } }]);
+  assert.equal(tie.settings.birth, 2, 'à égalité, le serveur gagne');
 });
 
 test('première synchro : tout l’historique part, daté très ancien', () => {

@@ -78,7 +78,8 @@ const upsert = (list, item) => [item, ...list.filter((x) => x.id !== item.id)];
 export function applyRemote(state, outbox, changes) {
   const result = changes.reduce((acc, c) => {
     const local = outbox[c.id];
-    if (local && local.updatedAt >= c.updatedAt) return acc;
+    // Strictement plus récente seulement : à égalité, la version du serveur s'impose partout (pas de divergence).
+    if (local && local.updatedAt > c.updatedAt) return acc;
     if (c.kind === 'settings') return c.deleted || !c.data ? acc : { ...acc, settings: { ...acc.settings, ...pickShared(c.data) }, touched: true };
     const key = c.kind === 'feed' ? 'feeds' : 'events';
     if (c.deleted) {

@@ -69,7 +69,17 @@ await B.reload(6000);
 const bFeeds = (await B.read('feeds.v1')) ?? [];
 const bSettings = await B.read('settings.v1');
 check('B reçoit les 3 tétées de A', [0, 1, 2].every((i) => bFeeds.some((f) => f.id === `${tag}-f${i}`)));
-check('B reçoit la date de naissance et l’écart de A', bSettings.birth === now - 10 * 86400000 && bSettings.intervalMin === 165);
+await A.reload(5000);
+const aSettings = await A.read('settings.v1');
+check('A et B ont la même date de naissance', Boolean(aSettings.birth) && aSettings.birth === bSettings.birth);
+// Un réglage commun changé sur A (écart +15 min) arrive sur B.
+await A.run(`document.querySelector('[data-tab="settings"]').click()`);
+await sleep(300);
+await A.run(`document.querySelector('.interval [data-step="1"]').click()`);
+await sleep(4000);
+const expected = (await A.read('settings.v1')).intervalMin;
+await B.reload(6000);
+check(`écart changé sur A (${expected} min) arrivé sur B`, (await B.read('settings.v1')).intervalMin === expected);
 check('B garde son propre thème', bSettings.theme === 'jour');
 
 // B note une couche depuis l'accueil, A doit la voir.

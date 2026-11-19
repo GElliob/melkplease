@@ -2,7 +2,7 @@
 // Pour publier une mise à jour, incrémente VERSION.
 
 const CACHE_PREFIX = 'melkplease-beta-';
-const VERSION = `${CACHE_PREFIX}v6`;
+const VERSION = `${CACHE_PREFIX}v7`;
 const ASSETS = [
   './', 'index.html', 'styles.css', 'manifest.webmanifest',
   'js/app.js', 'js/config.js', 'js/chrono.js', 'js/feed-form.js', 'js/feeds.js', 'js/files.js', 'js/format.js',
