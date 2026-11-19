@@ -8,7 +8,7 @@ import { bindServerSection, serverSectionHtml } from './settings-server.js';
 
 export { setSyncStatus } from './settings-server.js';
 
-export const APP_VERSION = '1.5 bêta';
+export const APP_VERSION = '1.6 bêta';
 const THEMES = [['auto', 'Auto'], ['nuit', 'Nuit'], ['jour', 'Jour']];
 
 function themeSeg(current) {

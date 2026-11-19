@@ -1,15 +1,35 @@
-// Génère les icônes PNG (croissant de lune chaud sur fond nuit), sans dépendance.
-// Usage : node tools/make-icons.mjs
+// Génère les icônes PNG, sans dépendance : une goutte de lait avec, en son cœur,
+// l'étoile de Céleste (quatre branches douces), sur le fond nuit de l'app.
+// Usage : node tools/make-icons.mjs <dossier de sortie> [taille d'aperçu → fichier apercu.png]
 
 import { deflateSync } from 'node:zlib';
 import { mkdirSync, writeFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { join } from 'node:path';
 
-const OUT = join(dirname(fileURLToPath(import.meta.url)), '..', 'icons');
-const BG = [12, 9, 7];
-const MOON = [214, 150, 92];
+const [OUT, PREVIEW] = process.argv.slice(2);
+if (!OUT) throw new Error('Usage : node tools/make-icons.mjs <dossier de sortie> [taille aperçu]');
+
+const BG = [21, 18, 16]; // fond nuit (#151210)
+const DROP = [236, 220, 201]; // goutte crème
+const STAR = [240, 138, 85]; // étoile abricot (couleur d'action de l'app)
 const SAMPLES = 4;
+
+// Goutte : un cercle prolongé par un cône jusqu'à la pointe (tangentes exactes).
+const C = Object.freeze({ x: 0.5, y: 0.585, r: 0.27 });
+const APEX_Y = 0.13;
+const D = C.y - APEX_Y;
+const TAN = C.r / Math.sqrt(D * D - C.r * C.r);
+const TANGENT_Y = APEX_Y + (D * D - C.r * C.r) / D;
+
+function inDrop(x, y) {
+  if ((x - C.x) ** 2 + (y - C.y) ** 2 <= C.r ** 2) return true;
+  return y >= APEX_Y && y <= TANGENT_Y && Math.abs(x - C.x) <= (y - APEX_Y) * TAN;
+}
+
+// Étoile à quatre branches arrondies (superellipse concave), au centre du cercle.
+// Branches verticales un peu plus longues : lecture « étoile » plutôt que « losange ».
+const STAR_C = Object.freeze({ x: 0.5, y: 0.6, ax: 0.13, ay: 0.175, p: 0.62 });
+const inStar = (x, y) => (Math.abs(x - STAR_C.x) / STAR_C.ax) ** STAR_C.p + (Math.abs(y - STAR_C.y) / STAR_C.ay) ** STAR_C.p <= 1;
 
 const CRC_TABLE = Array.from({ length: 256 }, (_, n) => {
   let c = n;
@@ -32,28 +52,26 @@ function chunk(type, data) {
   return Buffer.concat([len, body, crc]);
 }
 
-/** Couverture du croissant au point (x, y) en coordonnées 0..1 */
-function inMoon(x, y) {
-  const outer = (x - 0.5) ** 2 + (y - 0.5) ** 2 < 0.3 ** 2;
-  const bite = (x - 0.62) ** 2 + (y - 0.4) ** 2 < 0.25 ** 2;
-  return outer && !bite;
+/** Couleur d'un pixel, lissée par suréchantillonnage. */
+function pixel(px, py, size) {
+  const acc = [0, 0, 0];
+  for (let sy = 0; sy < SAMPLES; sy += 1) {
+    for (let sx = 0; sx < SAMPLES; sx += 1) {
+      const x = (px + (sx + 0.5) / SAMPLES) / size;
+      const y = (py + (sy + 0.5) / SAMPLES) / size;
+      const color = inStar(x, y) ? STAR : inDrop(x, y) ? DROP : BG;
+      color.forEach((v, i) => { acc[i] += v; });
+    }
+  }
+  return acc.map((v) => Math.round(v / SAMPLES ** 2));
 }
 
 function render(size) {
-  const raw = Buffer.alloc(size * (size * 3 + 1));
+  const row = size * 3 + 1;
+  const raw = Buffer.alloc(size * row);
   for (let py = 0; py < size; py += 1) {
-    raw[py * (size * 3 + 1)] = 0;
-    for (let px = 0; px < size; px += 1) {
-      let hits = 0;
-      for (let sy = 0; sy < SAMPLES; sy += 1) {
-        for (let sx = 0; sx < SAMPLES; sx += 1) {
-          if (inMoon((px + (sx + 0.5) / SAMPLES) / size, (py + (sy + 0.5) / SAMPLES) / size)) hits += 1;
-        }
-      }
-      const a = hits / SAMPLES ** 2;
-      const offset = py * (size * 3 + 1) + 1 + px * 3;
-      for (let c = 0; c < 3; c += 1) raw[offset + c] = Math.round(BG[c] * (1 - a) + MOON[c] * a);
-    }
+    raw[py * row] = 0;
+    for (let px = 0; px < size; px += 1) raw.set(pixel(px, py, size), py * row + 1 + px * 3);
   }
   const header = Buffer.alloc(13);
   header.writeUInt32BE(size, 0);
@@ -61,14 +79,11 @@ function render(size) {
   header.set([8, 2, 0, 0, 0], 8);
   return Buffer.concat([
     Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
-    chunk('IHDR', header),
-    chunk('IDAT', deflateSync(raw)),
-    chunk('IEND', Buffer.alloc(0)),
+    chunk('IHDR', header), chunk('IDAT', deflateSync(raw)), chunk('IEND', Buffer.alloc(0)),
   ]);
 }
 
 mkdirSync(OUT, { recursive: true });
-[180, 192, 512].forEach((size) => {
-  writeFileSync(join(OUT, `icon-${size}.png`), render(size));
-  console.log(`icon-${size}.png`);
-});
+[180, 192, 512].forEach((size) => writeFileSync(join(OUT, `icon-${size}.png`), render(size)));
+if (PREVIEW) writeFileSync(join(OUT, 'apercu.png'), render(Number(PREVIEW)));
+console.log(`Icônes écrites dans ${OUT}`);

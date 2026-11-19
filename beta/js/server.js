@@ -93,6 +93,7 @@ export function parisDayKey(ts) {
 export const pullPending = (code) => api(code, '/api/pending').then((r) => r.data);
 export const ackEntries = (code, ids) => (ids.length ? api(code, '/api/ack', { method: 'POST', body: { ids } }) : Promise.resolve());
 export const pushLive = (code, baseVersion, live) => api(code, '/api/live', { method: 'POST', body: { baseVersion, live } });
+export const syncItemsApi = (code, since, changes) => api(code, '/api/items', { method: 'POST', body: { since, changes } }).then((r) => r.data);
 export const testPush = (code) => api(code, '/api/test-push', { method: 'POST' }).then((r) => r.data);
 
 const urlBase64ToBytes = (value) => {
