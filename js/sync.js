@@ -4,11 +4,13 @@
 // sinon le changement fait sur le téléphone est transmis.
 
 import { STORAGE_PREFIX } from './config.js';
-import { ackEntries, applyEntries, liveSnapshot, pullPending, pushLive } from './server.js';
+import { ackEntries, applyEntries, liveSnapshot, pullPending, pushLive, syncItemsApi } from './server.js';
+import { applyRemote, buildChanges, clearSent, initialOutbox, loadOutbox, saveOutbox } from './items-sync.js';
 
 const KEY = `${STORAGE_PREFIX}.sync.v1`;
 const POLL_MS = 30_000;
 const DEBOUNCE_MS = 1500;
+const BATCH = 400;
 
 const readMeta = () => {
   try {
@@ -57,6 +59,24 @@ export function createSync({ getState, adopt, onStatus, onReceived }) {
     return push(pending.live.version);
   }
 
+  /** Historique partagé : envoie la boîte d'envoi, reçoit ce que l'autre téléphone (ou Siri) a changé. */
+  async function syncHistory() {
+    if (meta.itemsSeq == null) saveOutbox({ ...initialOutbox(getState()), ...loadOutbox() });
+    const changes = buildChanges(loadOutbox(), getState());
+    const batches = changes.length ? Array.from({ length: Math.ceil(changes.length / BATCH) }, (_, i) => changes.slice(i * BATCH, (i + 1) * BATCH)) : [[]];
+    let since = meta.itemsSeq ?? 0;
+    let more = true;
+    for (let i = 0; i < batches.length || more; i += 1) {
+      const res = await syncItemsApi(code(), since, batches[i] ?? []);
+      const patch = applyRemote(getState(), loadOutbox(), res.changes);
+      if (patch) adopt(patch);
+      if (batches[i]?.length) saveOutbox(clearSent(loadOutbox(), batches[i]));
+      since = res.seq;
+      more = res.more;
+      save({ itemsSeq: since });
+    }
+  }
+
   async function syncNow() {
     if (!code()) return;
     if (running) return running;
@@ -64,6 +84,7 @@ export function createSync({ getState, adopt, onStatus, onReceived }) {
       try {
         const first = await syncOnce();
         if (first.conflict) await syncOnce();
+        await syncHistory();
         onStatus({ ok: true, at: Date.now() });
       } catch (err) {
         console.warn('[synchro]', err);

@@ -20,6 +20,7 @@ import { renderJournal } from './view-journal.js';
 import { renderStats } from './view-stats.js';
 import { renderSettings, setSyncStatus } from './view-settings.js';
 import { createSync } from './sync.js';
+import { diffChanges, loadOutbox, saveOutbox, settingsChange, touchesShared } from './items-sync.js';
 import { enableNotifications, testPush } from './server.js';
 
 const BABY_NAME = 'Céleste';
@@ -33,6 +34,10 @@ let wakeLock = null;
 let sync = null;
 /** Signale au serveur un changement fait sur le téléphone. */
 const changed = () => sync?.markChanged();
+/** Note dans la boîte d'envoi ce qui a changé, pour l'autre téléphone. */
+const queue = (changes) => {
+  if (Object.keys(changes).length) saveOutbox({ ...loadOutbox(), ...changes });
+};
 
 const view = () => document.getElementById('view');
 
@@ -44,12 +49,16 @@ function setState(patch) {
 /* ---------- Persistance ---------- */
 
 function commitFeeds(feeds) {
-  setState({ feeds: saveFeeds(feeds) });
+  const next = saveFeeds(feeds);
+  queue(diffChanges(state.feeds, next, 'feed', Date.now()));
+  setState({ feeds: next });
   changed();
 }
 
 function commitEvents(events) {
-  setState({ events: saveEvents(events) });
+  const next = saveEvents(events);
+  queue(diffChanges(state.events, next, 'event', Date.now()));
+  setState({ events: next });
   changed();
 }
 
@@ -61,6 +70,7 @@ function commitActive(active) {
 }
 
 function updateSettings(patch) {
+  if (touchesShared(patch)) queue(settingsChange(Date.now()));
   setState({ settings: saveSettings({ ...state.settings, ...patch }) });
   changed();
 }
@@ -69,6 +79,7 @@ function updateSettings(patch) {
 function adoptRemote(patch) {
   if (patch.feeds) saveFeeds(patch.feeds);
   if (patch.events) saveEvents(patch.events);
+  if (patch.settings) saveSettings(patch.settings);
   if ('active' in patch) saveActive(patch.active);
   if ('sleepActive' in patch) saveSleepActive(patch.sleepActive);
   setState(patch);
