@@ -32,10 +32,11 @@ test('état transmis au serveur', () => {
   const vitd = buildEvent('medic', NOW - M, { produit: 'vitd' });
   const vitk = buildEvent('medic', NOW - 2 * M, { produit: 'vitk' });
   const snap = liveSnapshot({
-    active: null, sleepActive: { start: NOW - M }, feeds: [{ start: NOW - 60 * M }], events: [vitd, vitk],
+    active: null, sleepActive: { start: NOW - M }, feeds: [{ start: NOW - 60 * M, segments: [{ side: 'D', start: NOW - 60 * M, end: NOW - 50 * M }] }], events: [vitd, vitk],
     settings: { intervalMin: 150, reminderOffsetMin: 10, lateAlertMin: 60, vitdHour: 8, quietNights: true, lastBackup: null },
   }, NOW);
   assert.equal(snap.lastFeedStart, NOW - 60 * M);
+  assert.equal(snap.suggestedSide, 'G');
   assert.equal(snap.vitdDay, parisDayKey(NOW));
   assert.equal(snap.vitkLast, NOW - 2 * M);
   assert.deepEqual(snap.settings, { intervalMin: 150, offsetMin: 10, lateMin: 60, vitdHour: 8, quiet: true, quietFrom: 23, quietTo: 6 });

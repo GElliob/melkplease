@@ -5,6 +5,7 @@
 import { SERVER_CANAL, SERVER_URL } from './config.js';
 import { startOfDay } from './format.js';
 import { buildEvent } from './tracking-model.js';
+import { sideOrder, suggestNextSide } from './feeds.js';
 
 const TIMEOUT_MS = 8000;
 
@@ -73,6 +74,9 @@ export function liveSnapshot(state, now = Date.now()) {
     active: state.active,
     sleepActive: state.sleepActive,
     lastFeedStart: state.feeds[0]?.start ?? null,
+    // Pour Siri : « enregistre une tétée » démarre du côté conseillé, « c'était quel sein ? » répond juste.
+    lastFeedSides: state.feeds[0] ? sideOrder(state.feeds[0]) : null,
+    suggestedSide: suggestNextSide(state.feeds).side,
     vitdDay: vitd ? parisDayKey(vitd.at) : null,
     vitkLast: vitk?.at ?? null,
     lastBackup: s.lastBackup ?? null,

@@ -3,7 +3,7 @@
 
 // Préfixe propre à l'app principale : ne touche jamais aux caches de la bêta (melkplease-beta-*).
 const CACHE_PREFIX = 'melkplease-v';
-const VERSION = `${CACHE_PREFIX}5`;
+const VERSION = `${CACHE_PREFIX}6`;
 const ASSETS = [
   './', 'index.html', 'styles.css', 'manifest.webmanifest',
   'js/app.js', 'js/config.js', 'js/chrono.js', 'js/feed-form.js', 'js/feeds.js', 'js/files.js', 'js/format.js',
