@@ -82,6 +82,16 @@ export function weightTrend(events) {
   return { last, deltaG: previous ? last.data.poids - previous.data.poids : null, sinceMs: previous ? last.at - previous.at : null };
 }
 
+/** Vitamine K mensuelle : dernière dose et date de la suivante (même jour, mois suivant). */
+export function vitaminKStatus(events, now) {
+  const last = events.find((e) => e.type === 'medic' && e.data.produit === 'vitk' && e.at <= now);
+  if (!last) return null;
+  const d = new Date(last.at);
+  const lastDay = new Date(d.getFullYear(), d.getMonth() + 2, 0).getDate();
+  const next = new Date(d.getFullYear(), d.getMonth() + 1, Math.min(d.getDate(), lastDay)).getTime();
+  return { last, next, due: now >= next };
+}
+
 export function nextAppointment(events, now) {
   return [...events].reverse().find((e) => e.type === 'rdv' && e.at >= now) ?? null;
 }
